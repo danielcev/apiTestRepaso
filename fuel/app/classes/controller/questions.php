@@ -1,6 +1,6 @@
 <?php
 
-
+header("Access-Control-Allow-Origin: *");
 class Controller_Questions extends Controller_Rest{
 
     function post_create(){
@@ -46,6 +46,8 @@ class Controller_Questions extends Controller_Rest{
 
     function get_questions(){
 
+        header("Access-Control-Allow-Origin: *");
+
         try{
 
             $subjects = $_GET['subjects'];
@@ -54,14 +56,24 @@ class Controller_Questions extends Controller_Rest{
             foreach ($subjects as $key => $subject_number) 
             {
 
-                $questionQuery = Model_Question::find('first', array(
+                $questionQuery = Model_Question::find('all', array(
                     'where' => array(
                         array('id_subject', $subject_number)
                     )
                 ));
 
                 if($questionQuery != null){
-                    $questions[] = $questionQuery;
+
+                    if(gettype($questionQuery) == "array"){
+                        foreach ($questionQuery as $key => $questionAdd){
+
+                            $questions[] = $questionAdd;
+
+                        }
+                    }else{
+                        $questions[] = $questionQuery;
+                    }
+
                 }
 
             }
@@ -82,6 +94,50 @@ class Controller_Questions extends Controller_Rest{
 
             }
 
+            if(!isset($questionsOK)){
+                return $this->createResponse(200, 'No hay preguntas con esas condiciones');
+            }
+
+            return $this->createResponse(200, 'Preguntas devueltas', array('questions' => $questionsOK));
+
+        }catch(Exception $e){
+
+            return $this->createResponse(500, $e->getMessage() . "Línea ". $e->getLine());
+
+        }
+
+    }
+
+    function get_allquestions(){
+
+        header("Access-Control-Allow-Origin: *");
+
+        try{
+
+            $levels = $_GET['levels'];
+
+            $questions = Model_Question::find('all');
+
+            if($questions == null){
+                return $this->createResponse(200, 'No hay ninguna pregunta creada');
+            }
+
+            foreach ($levels as $key => $level) 
+            {
+
+                foreach ($questions as $key => $question) {
+
+                    if($question->level == $level){
+                        $questionsOK[] = $question;
+                    }
+                }   
+
+            }
+
+            if(!isset($questionsOK)){
+                return $this->createResponse(200, 'No hay ninguna pregunta con esas condiciones');
+            }
+
             return $this->createResponse(200, 'Preguntas devueltas', array('questions' => $questionsOK));
 
         }catch(Exception $e){
@@ -93,6 +149,7 @@ class Controller_Questions extends Controller_Rest{
     }
 
     function post_uplevel(){
+        $this->cors();
         $id_question = $_POST['id_question'];
 
         $questionQuery = Model_Question::find('first', array(
@@ -126,6 +183,33 @@ class Controller_Questions extends Controller_Rest{
 
         return $json;
 
+    }
+
+    function cors() {
+
+        // Allow from any origin
+        if (isset($_SERVER['HTTP_ORIGIN'])) {
+            // Decide if the origin in $_SERVER['HTTP_ORIGIN'] is one
+            // you want to allow, and if so:
+            header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Max-Age: 86400');    // cache for 1 day
+        }
+    
+        // Access-Control headers are received during OPTIONS requests
+        if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    
+            if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
+                // may also be using PUT, PATCH, HEAD etc
+                header("Access-Control-Allow-Methods: GET, POST, OPTIONS");         
+    
+            if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
+                header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    
+            exit(0);
+        }
+    
+        echo "You have CORS!";
     }
 
 }
